@@ -200,24 +200,15 @@ function StateManager:PreloadAnimations()
 			task.wait()
 		until track.Length > 0 or tick() - startTime > 5
 
-		if track.Length > 0 then
-			print("✓ Preloaded", name, "- Length:", track.Length)
-		else
-			warn("✗ Failed to preload", name)
-		end
-
 		if name == "GunShot" or name == "SwordSwing" then
 			track.Priority = Enum.AnimationPriority.Action4
 			track.Looped = false
 			self.PreloadedTracks[name] = track
-			print("Stored attack animation:", name, track)
 		else
 			track:Stop()
 			track:Destroy()
 		end
 	end
-
-	print("All preloaded tracks:", self.PreloadedTracks)
 end
 
 function StateManager:LoadAnimations()

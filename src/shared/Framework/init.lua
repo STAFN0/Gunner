@@ -18,7 +18,7 @@ local NetworkFunction = require(script.NetworkFunction)
 local RateLimiter = require(script.RateLimiter)
 local Types = require(script.Types)
 
--- Re-export all types for VSCode IntelliSense
+-- Re-export all types for VSCode
 export type Signal = Types.Signal
 export type Connection = Types.Connection
 export type Promise = Types.Promise
@@ -146,10 +146,8 @@ function Framework:RegisterService(moduleOrTable: any, name: string?): Types.Ser
 	if service.Dependencies then
 		if type(service.Dependencies) == "table" then
 			if service.Dependencies.required or service.Dependencies.optional then
-				-- New format
 				self._serviceDependencies[name] = service.Dependencies
 			else
-				-- Old format (flat array) - convert to new format
 				self._serviceDependencies[name] = {
 					required = service.Dependencies,
 					optional = {},
