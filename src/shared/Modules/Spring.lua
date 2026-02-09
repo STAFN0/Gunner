@@ -46,6 +46,9 @@ function SPRING.new(self, mass, force, damping, speed)
 	end
 
 	function spring.update(self, dt)
+		-- Cap dt to prevent spring "explosions" during lag spikes
+		dt = math.min(dt, 0.1)
+
 		local scaledDeltaTime = dt * self.Speed / ITERATIONS
 		for i = 1, ITERATIONS do
 			local iterationForce = self.Target - self.Position

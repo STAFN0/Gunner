@@ -29,6 +29,18 @@ function ViewModel:OnStart()
 	self.Player.CharacterAdded:Connect(function(character)
 		self.ActiveCharacter = character
 		self:SetupViewModel()
+		local hum = character:WaitForChild("Humanoid")
+		local landConnection = hum.StateChanged:Connect(function(_oldState, newState)
+			if newState == Enum.HumanoidStateType.Landed then
+				local hrp = character:FindFirstChild("HumanoidRootPart")
+				if hrp then
+					local fallSpeed = math.abs(hrp.AssemblyLinearVelocity.Y)
+					local impactForce = math.clamp(fallSpeed / 50, 0.2, 1.5)
+					self.bobSpring:shove(Vector3.new(0, -impactForce, 0))
+				end
+			end
+		end)
+		table.insert(self.Connections, landConnection)
 	end)
 
 	self.Player.CharacterRemoving:Connect(function()
@@ -60,31 +72,25 @@ function ViewModel:StartBobbing()
 			return
 		end
 
-		local mouseDelta = UserInputService:GetMouseDelta()
-		local yVelocity = hrp.AssemblyLinearVelocity.Y
-		local humanoidState = hum:GetState()
-
-		local isJumping = humanoidState == Enum.HumanoidStateType.Jumping
-		local isFalling = humanoidState == Enum.HumanoidStateType.Freefall
-		local isInAir = isJumping or isFalling
-
-		local bob = Vector3.new(0, 0, 0)
-
-		if isInAir then
-			local verticalBob = yVelocity / 50
-			bob = Vector3.new(verticalBob, 0, 0)
+		local hrp = self.ActiveCharacter:FindFirstChild("HumanoidRootPart")
+		local hum = self.ActiveCharacter:FindFirstChild("Humanoid")
+		if not hrp or not hum then
+			return
 		end
 
-		self.bobSpring:shove(bob)
+		local yVelocity = hrp.AssemblyLinearVelocity.Y
+		local airLean = math.clamp(yVelocity / 80, -0.4, 0.4)
+		self.bobSpring.Target = Vector3.new(airLean, 0, 0)
+
 		local updateBob = self.bobSpring:update(dt)
 
-		local sway = Vector3.new(mouseDelta.X, mouseDelta.Y, 0) / 50
-		self.swaySpring:shove(sway)
+		local mouseDelta = UserInputService:GetMouseDelta()
+		self.swaySpring:shove(Vector3.new(mouseDelta.X, mouseDelta.Y, 0) / 60)
 		local updateSway = self.swaySpring:update(dt)
-
 		self.ActiveViewModel.CameraBone.CFrame = self.Camera.CFrame
-			* CFrame.new(updateBob.Y, updateBob.X, 0)
 			* CFrame.new(updateSway.X, updateSway.Y, 0)
+			* CFrame.new(0, updateBob.Y - (updateBob.X / 2), 0)
+			* CFrame.Angles(math.rad(updateBob.X * 10), 0, 0)
 	end)
 end
 

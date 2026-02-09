@@ -1,12 +1,15 @@
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local ContentProvider = game:GetService("ContentProvider")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local StateManager = {
 	Type = "Controller",
 	Name = "StateManager",
 	Dependencies = { "ViewModel" },
 }
+
+local BulletModule = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Modules"):WaitForChild("Bullet"))
 
 local Animations = {
 	Idle = "73217042862044",
@@ -25,6 +28,7 @@ function StateManager:OnInit()
 	self.ActiveAnimations = {}
 	self.Connections = {}
 	self.StateChangedCallbacks = {}
+	self.AttemptaShot = self.Framework:CreateSignal({ Name = "BulletService" }, "AttemptAShot")
 	self.hum = nil
 
 	self.LastWPress = 0
@@ -33,7 +37,8 @@ function StateManager:OnInit()
 
 	self.LastGunShot = 0
 	self.LastSwordSwing = 0
-	self.AttackCooldown = 1
+	self.AttackCooldown = 0.5
+	self.BulletSpeed = 300
 
 	self.States = {
 		Idle = {
@@ -129,7 +134,7 @@ function StateManager:OnStart()
 			local currentTime = tick()
 			if currentTime - self.LastGunShot >= self.AttackCooldown then
 				self.LastGunShot = currentTime
-				self:PlayOneShot("GunShot")
+				self:ShootBullet()
 			end
 		end
 
@@ -158,6 +163,36 @@ function StateManager:OnStart()
 	end)
 end
 
+function StateManager:ShootBullet()
+	local track = self.PreloadedTracks["GunShot"]
+	if track then
+		track:Stop()
+		track:Play(0, 1, 1)
+	end
+
+	local camera = workspace.CurrentCamera
+	local viewModel = camera:FindFirstChild("ViewModel")
+
+	local startPos
+	local direction = camera.CFrame.LookVector
+
+	if viewModel and viewModel:FindFirstChild("Gun") and viewModel.Gun:FindFirstChild("Fire") then
+		startPos = viewModel.Gun.Fire.Position
+	else
+		startPos = camera.CFrame.Position + (direction * 2)
+	end
+
+	local player = game.Players.LocalPlayer
+	if player.Character then
+		BulletModule(startPos, direction, self.BulletSpeed, player.Character, function() end, 3)
+	end
+
+	self.AttemptaShot:Fire({
+		StartPos = startPos,
+		Direction = direction,
+	})
+end
+
 function StateManager:PlayOneShot(animName)
 	local track = self.PreloadedTracks[animName]
 	if track then
@@ -169,44 +204,25 @@ end
 function StateManager:PreloadAnimations()
 	local viewModel = self.ViewModelModule:GetViewModel()
 	if not viewModel then
-		warn("No viewmodel in preload")
 		return
 	end
 
 	local hum = viewModel:FindFirstChildOfClass("Humanoid")
-	if not hum then
-		warn("No humanoid in preload")
-		return
-	end
-
-	local animator = hum:FindFirstChildOfClass("Animator")
-	if not animator then
-		animator = Instance.new("Animator")
-		animator.Parent = hum
-	end
+	local animator = hum:FindFirstChildOfClass("Animator") or Instance.new("Animator", hum)
 
 	local animInstances = {}
-	for name, anim in pairs(self.LoadedAnimations) do
+	for _, anim in pairs(self.LoadedAnimations) do
 		table.insert(animInstances, anim)
 	end
 
 	ContentProvider:PreloadAsync(animInstances)
 
 	for name, anim in pairs(self.LoadedAnimations) do
-		local track = animator:LoadAnimation(anim)
-
-		local startTime = tick()
-		repeat
-			task.wait()
-		until track.Length > 0 or tick() - startTime > 5
-
 		if name == "GunShot" or name == "SwordSwing" then
+			local track = animator:LoadAnimation(anim)
 			track.Priority = Enum.AnimationPriority.Action4
 			track.Looped = false
 			self.PreloadedTracks[name] = track
-		else
-			track:Stop()
-			track:Destroy()
 		end
 	end
 end
