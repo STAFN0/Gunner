@@ -116,22 +116,38 @@ function StateManager:OnStart()
 		table.insert(self.Connections, stateConnection)
 	end)
 
-	-- Handle if character already exists
-	if player.Character then
-		self.hum = player.Character:FindFirstChild("Humanoid")
+if player.Character then
+    self.hum = player.Character:FindFirstChild("Humanoid")
+    local hrp = player.Character:FindFirstChild("HumanoidRootPart")
 
-		-- Wait for viewmodel before preloading
-		task.spawn(function()
-			local startTime = tick()
-			while not self.ViewModelModule:GetViewModel() and tick() - startTime < 5 do
-				task.wait(0.1)
-			end
+    task.spawn(function()
+        local startTime = tick()
+        while not self.ViewModelModule:GetViewModel() and tick() - startTime < 5 do
+            task.wait(0.1)
+        end
 
-			if self.ViewModelModule:GetViewModel() then
-				self:PreloadAnimations()
-			end
-		end)
-	end
+        if self.ViewModelModule:GetViewModel() then
+            self:PreloadAnimations()
+        end
+    end)
+
+    if hrp then
+        local stateConnection = RunService.Heartbeat:Connect(function()
+            if not self.hum or self.hum.Health <= 0 then return end
+            local speed = hrp.AssemblyLinearVelocity.Magnitude
+            if speed < 1 then
+                self:SetState("Idle")
+                self.IsSprinting = false
+                self.hum.WalkSpeed = 14
+            elseif self.IsSprinting then
+                self:SetState("Running")
+            elseif speed < 9 then
+                self:SetState("Walking")
+            end
+        end)
+        table.insert(self.Connections, stateConnection)
+    end
+end
 
 	self:SetState("Idle")
 
