@@ -81,8 +81,19 @@ function StateManager:OnStart()
 
 		self.hum = hum
 
-		task.wait(0.5)
-		self:PreloadAnimations()
+		-- Wait for viewmodel to be created before preloading animations
+		task.spawn(function()
+			local startTime = tick()
+			while not self.ViewModelModule:GetViewModel() and tick() - startTime < 5 do
+				task.wait(0.1)
+			end
+
+			if self.ViewModelModule:GetViewModel() then
+				self:PreloadAnimations()
+			else
+				warn("[StateManager] ViewModel not found after 5 seconds")
+			end
+		end)
 
 		local stateConnection = RunService.Heartbeat:Connect(function()
 			if not hum or hum.Health <= 0 then
@@ -105,10 +116,21 @@ function StateManager:OnStart()
 		table.insert(self.Connections, stateConnection)
 	end)
 
+	-- Handle if character already exists
 	if player.Character then
 		self.hum = player.Character:FindFirstChild("Humanoid")
-		task.wait(0.5)
-		self:PreloadAnimations()
+
+		-- Wait for viewmodel before preloading
+		task.spawn(function()
+			local startTime = tick()
+			while not self.ViewModelModule:GetViewModel() and tick() - startTime < 5 do
+				task.wait(0.1)
+			end
+
+			if self.ViewModelModule:GetViewModel() then
+				self:PreloadAnimations()
+			end
+		end)
 	end
 
 	self:SetState("Idle")
@@ -204,10 +226,16 @@ end
 function StateManager:PreloadAnimations()
 	local viewModel = self.ViewModelModule:GetViewModel()
 	if not viewModel then
+		warn("[StateManager] Cannot preload animations - ViewModel not found")
 		return
 	end
 
 	local hum = viewModel:FindFirstChildOfClass("Humanoid")
+	if not hum then
+		warn("[StateManager] ViewModel has no Humanoid")
+		return
+	end
+
 	local animator = hum:FindFirstChildOfClass("Animator") or Instance.new("Animator", hum)
 
 	local animInstances = {}
@@ -225,6 +253,8 @@ function StateManager:PreloadAnimations()
 			self.PreloadedTracks[name] = track
 		end
 	end
+
+	print("[StateManager] Animations preloaded successfully")
 end
 
 function StateManager:LoadAnimations()
@@ -243,13 +273,11 @@ end
 function StateManager:PlayAnimation(animName, looped)
 	local viewModel = self.ViewModelModule:GetViewModel()
 	if not viewModel then
-		warn("ViewModel not found!")
-		return
+		return -- Silently fail if viewmodel doesn't exist yet
 	end
 
 	local hum = viewModel:FindFirstChildOfClass("Humanoid")
 	if not hum then
-		warn("ViewModel has no Humanoid!")
 		return
 	end
 

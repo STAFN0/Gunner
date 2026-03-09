@@ -26,7 +26,32 @@ function ViewModel:OnInit()
 end
 
 function ViewModel:OnStart()
+
+	
+	-- Setup for initial character if it exists
+	if self.Player.Character then
+		self.ActiveCharacter = self.Player.Character
+		self:SetupViewModel()
+
+		local hum = self.ActiveCharacter:FindFirstChild("Humanoid")
+		if hum then
+			local landConnection = hum.StateChanged:Connect(function(_oldState, newState)
+				if newState == Enum.HumanoidStateType.Landed then
+					local hrp = self.ActiveCharacter:FindFirstChild("HumanoidRootPart")
+					if hrp then
+						local fallSpeed = math.abs(hrp.AssemblyLinearVelocity.Y)
+						local impactForce = math.clamp(fallSpeed / 50, 0.2, 1.5)
+						self.bobSpring:shove(Vector3.new(0, -impactForce, 0))
+					end
+				end
+			end)
+			table.insert(self.Connections, landConnection)
+		end
+	end
+
+	-- Setup for future characters
 	self.Player.CharacterAdded:Connect(function(character)
+
 		self.ActiveCharacter = character
 		self:SetupViewModel()
 		local hum = character:WaitForChild("Humanoid")

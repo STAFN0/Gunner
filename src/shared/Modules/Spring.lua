@@ -1,12 +1,12 @@
--- Constants
+
 
 local ITERATIONS = 8
 
--- Module
+
 
 local SPRING = {}
 
--- Functions
+
 
 function SPRING.new(self, mass, force, damping, speed)
 	local spring = {
@@ -46,7 +46,7 @@ function SPRING.new(self, mass, force, damping, speed)
 	end
 
 	function spring.update(self, dt)
-		-- Cap dt to prevent spring "explosions" during lag spikes
+		
 		dt = math.min(dt, 0.1)
 
 		local scaledDeltaTime = dt * self.Speed / ITERATIONS
@@ -66,6 +66,6 @@ function SPRING.new(self, mass, force, damping, speed)
 	return spring
 end
 
--- Return
+
 
 return SPRING

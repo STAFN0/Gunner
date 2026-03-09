@@ -1,6 +1,6 @@
 -- =====================================================
 -- STAFN0's Game Framework v2.1
--- @author STAFN0
+-- @author STAFN0 // @xpu. on discord
 -- Main entry point - all modules are children of this
 -- =====================================================
 
